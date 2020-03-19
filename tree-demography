@@ -1,0 +1,131 @@
+#Script for tree survival and growth hierarchical neighborhood models apply for data from the Luquillo Forest Dynamics Plot, Puerto Rico.
+
+#############################SURVIVAL MODEL##################################################################
+#Tree survival model to use with rjags. Survival was modelled as a logistic function with binomial errors. 
+#Model goodness of fit was assesses via posterior predcitive checks where a loss function was calculated on a simulated and observed data.
+
+
+model
+{
+  
+  #priors
+  mubeta[1] ~ dnorm(0, 0.01)  
+  mubeta[2] ~ dnorm(0, 0.01)
+  mubeta[3] ~ dnorm(0, 0.01)
+  mubeta[4] ~ dnorm(0, 0.01)
+  mubeta[5] ~ dnorm(0, 0.01)
+  mubeta[6] ~ dnorm(0, 0.01)
+  mubeta[7] ~ dnorm(0, 0.01)
+  mubeta[8] ~ dnorm(0, 0.01)
+  
+  beta.t[1] ~ dnorm(0, 0.01)
+  beta.t[2] ~ dnorm(0, 0.01)
+  beta.t[3] ~ dnorm(0, 0.01)
+  
+  for (k in 1:8)
+  {
+    tau[k] ~ dgamma(0.001, 0.001)
+  }
+  
+  sigma <- 1/tau
+  
+  # r ~ dgamma(1, 0.1)
+  
+  #At the species level
+  for (j in 1:ns)  # for each species
+  {
+    beta1[j] ~ dnorm(mubeta[1] + Ft[j]*beta.t[1], tau[1]) # intercept
+    beta2[j] ~ dnorm(mubeta[2] + Ft[j]*beta.t[2], tau[2]) # conspecific nci effect
+    beta3[j] ~ dnorm(mubeta[3] + Ft[j]*beta.t[3], tau[3]) # heterospecific nci effect
+    beta4[j] ~ dnorm(mubeta[4], tau[4]) # nci h effect
+    beta5[j] ~ dnorm(mubeta[5], tau[5]) # nci s effect
+    beta6[j] ~ dnorm(mubeta[6], tau[6]) # size effect
+    beta7[j] ~ dnorm(mubeta[7], tau[7]) # nci_cons *size effect
+    beta8[j] ~ dnorm(mubeta[8], tau[8]) # nci_hetero *size effect
+  }
+  
+  #At the individual level
+  for (i in 1:nf) # for each focal tree
+  {
+    ps[i] ~ dbern(psurv[i])
+    ps_new[i] ~ dbern(psurv[i]) # simulate new value for posterior
+    
+    logit(psurv[i]) <- z[i]
+    
+    z[i] <- beta1[sp[i]] 
+    + beta2[sp[i]]*(cnci[i]) 
+    + beta3[sp[i]]*(hnci[i]) 
+    + beta4[sp[i]]*ncih[i] 
+    + beta5[sp[i]]*(ncis[i]) 
+    + beta6[sp[i]]*relsize[i] 
+    + beta7[sp[i]]*relsize[i]*(cnci[i]) 
+    + beta8[sp[i]]*relsize[i]*(hnci[i]) 
+    
+  }
+  # pval = 1 if the observed log-likelihood is greater than the simulated one, 0 if smaller
+  pval <- step(sum((ps - ps_new) * z))
+} 
+
+
+#############################GROWTH MODEL##################################################################
+#Tree growth model to use with rjags. Growth was modelled as a linear function with Gaussian errors. 
+#Model goodness of fit was assesses via posterior predcitive checks where a loss function was calculated on a simulated and observed data.
+
+model
+{
+  
+  #priors
+  mubeta[1] ~ dnorm(0, 0.01)  
+  mubeta[2] ~ dnorm(0, 0.01)
+  mubeta[3] ~ dnorm(0, 0.01)
+  mubeta[4] ~ dnorm(0, 0.01)
+  mubeta[5] ~ dnorm(0, 0.01)
+  mubeta[6] ~ dnorm(0, 0.01)
+  mubeta[7] ~ dnorm(0, 0.01)
+  mubeta[8] ~ dnorm(0, 0.01)
+  
+  beta.t[1] ~ dnorm(0, 0.01)
+  beta.t[2] ~ dnorm(0, 0.01)
+  beta.t[3] ~ dnorm(0, 0.01)
+  
+  
+  for (k in 1:9)
+  {
+    tau[k] ~ dgamma(0.1, 0.1)
+  }
+  
+  sigma <- 1/tau
+  
+  #At the species level
+  for (j in 1:ns)  # for each species
+  {
+    beta1[j] ~ dnorm(mubeta[1] + Ft[j]*beta.t[1], tau[1]) # intercept
+    beta2[j] ~ dnorm(mubeta[2] + Ft[j]*beta.t[2], tau[2]) # conspecific nci effect
+    beta3[j] ~ dnorm(mubeta[3] + Ft[j]*beta.t[3], tau[3]) # heterospecific nci effect
+    beta4[j] ~ dnorm(mubeta[4], tau[4]) # nci h effect
+    beta5[j] ~ dnorm(mubeta[5], tau[5]) # nci s effect
+    beta6[j] ~ dnorm(mubeta[6], tau[6]) # size effect
+    beta7[j] ~ dnorm(mubeta[7], tau[7]) # nci_cons *size effect
+    beta8[j] ~ dnorm(mubeta[8], tau[8]) # nci_hetero *size effect
+  }
+  
+  #At the individual level
+  for (i in 1:nf) # for each focal tree
+  {
+    g[i] <- beta1[sp[i]] 
+    + beta2[sp[i]]*(cnci[i]) 
+    + beta3[sp[i]]*(hnci[i]) 
+    + beta4[sp[i]]*ncih[i] 
+    + beta5[sp[i]]*(ncis[i]) 
+    + beta6[sp[i]]*relsize[i] 
+    + beta7[sp[i]]*relsize[i]*(cnci[i]) 
+    + beta8[sp[i]]*relsize[i]*(hnci[i]) 
+    
+    
+    pg[i] ~ dnorm(g[i], tau[9])
+    pg_new[i] ~ dnorm(g[i], tau[9]) # simulate new value for posterior
+  }
+  # pval = 1 if the observed log-likelihood is greater than the simulated one, 0 if smaller
+  pval <- step(sum((pg_new - g)^2) - sum((pg - g)^2))
+}
+
